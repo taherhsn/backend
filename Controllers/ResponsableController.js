@@ -97,6 +97,12 @@ export const UpdateProject = async (req, res) => {
       return res.status(404).json({ error: "Project not found" });
     }
     
+    if (Nom_P && Nom_P !== project.Nom_P) {
+      const existingProject = await ProjectModel.findOne({ where: { Nom_P } })
+      if (existingProject) {
+        return res.status(409).json({ error: "Project name already taken" })
+      }
+    }
     if (Nom_P) project.Nom_P = Nom_P;
     if(Type) project.Type =Type ;
     if (Duree) project.Duree = Duree;
@@ -139,7 +145,6 @@ if (existingEnterprise) {
       Nom_E,
       Point,
       Classement,
-      Somme_T,
       N_Telephone,
       Email
     });
@@ -188,6 +193,52 @@ export const DeleteEntreprise = async (req, res) => {
   }
 };
 
+export const UpdateEnterprise = async (req, res) => {
+  const { id } = req.params
+  const { Nom_E, Point, Classement, N_Telephone, Email } = req.body
+
+  try {
+    const enterprise = await EntrepriseModel.findByPk(id)
+
+    if (!enterprise) {
+      return res.status(404).json({ error: "Enterprise not found" })
+    }
+   
+
+    // Check if new name or email is already taken by another enterprise
+    if (Nom_E && Nom_E !== enterprise.Nom_E)  {
+      const existingEnterprise = await EntrepriseModel.findOne({
+        where: { Nom_E ,  Email }
+      }) 
+
+      if (existingEnterprise) {
+        return res.status(409).json({
+          error: "Enterprise name or email already taken",
+          field: existingEnterprise.Nom_E === Nom_E ? "name" : "email",
+        })
+      }
+    }
+
+    // Update fields if provided
+    if (Nom_E) enterprise.Nom_E = Nom_E
+    if (Point !== undefined) enterprise.Point = Point
+    if (Classement !== undefined) enterprise.Classement = Classement
+    if (N_Telephone) enterprise.N_Telephone = N_Telephone
+    if (Email) enterprise.Email = Email
+
+    await enterprise.save()
+
+    return res.status(200).json({
+      message: "Enterprise updated successfully",
+      enterprise,
+    })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({ error: "Internal server error" })
+  }
+}
+
+
 // Attribution 
 export const CreateAttribution = async (req, res) => {
   try {
@@ -219,3 +270,22 @@ export const CreateAttribution = async (req, res) => {
     return res.status(500).json({ "error": "internal server error" });
   }
 };
+
+
+export const DeleteAttribution = async (req, res) => {
+  const { id } = req.params
+
+  try {
+    const attribution = await AttributionModel.findByPk(id)
+
+    if (!attribution) {
+      return res.status(404).json({ error: "Attribution not found" })
+    }
+
+    await attribution.destroy()
+    return res.status(200).json({ message: "Attribution deleted successfully" })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({ error: "Internal server error" })
+  }
+}
